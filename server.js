@@ -15,7 +15,7 @@ if (missingEnv.length > 0) {
     logger.error(`❌ Faltan variables de entorno: ${missingEnv.join(', ')}`);
     process.exit(1);
 }
-
+//test
 // Crear aplicación Express
 const app = express();
 const server = createServer(app);
