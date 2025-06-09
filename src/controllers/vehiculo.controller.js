@@ -1,5 +1,5 @@
 // src/controllers/vehiculo.controller.js
-const Vehiculo = require('../models/Vehiculo');
+const Vehiculo = require('../models/Vehiculo.model');
 const { validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 

@@ -1,5 +1,5 @@
 // src/services/vehiculo.service.js
-const Vehiculo = require('../models/Vehiculo');
+const Vehiculo = require('../models/Vehiculo.model');
 const logger = require('../utils/logger');
 
 class VehiculoService {
