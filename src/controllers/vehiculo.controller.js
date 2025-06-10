@@ -163,6 +163,7 @@ exports.update = async (req, res) => {
         });
     }
 };
+
 // Actualizar parcialmente un vehículo
 exports.partialUpdate = async (req, res) => {
     try {
@@ -177,13 +178,10 @@ exports.partialUpdate = async (req, res) => {
             });
         }
 
-        // Actualización en la base de datos
-        const [result] = await db.query(
-            'UPDATE vehiculos SET ? WHERE id = ?',
-            [updateData, id]
-        );
+        // Usar el modelo como los demás métodos
+        const updated = await Vehiculo.update(id, updateData);
 
-        if (result.affectedRows === 0) {
+        if (!updated) {
             return res.status(404).json({
                 success: false,
                 message: 'Vehículo no encontrado'
@@ -195,7 +193,7 @@ exports.partialUpdate = async (req, res) => {
         res.json({
             success: true,
             message: 'Vehículo actualizado parcialmente',
-            data: vehiculoActualizado
+            data: { vehiculo: vehiculoActualizado }
         });
     } catch (error) {
         logger.error(`Error en partialUpdate: ${error.message}`);

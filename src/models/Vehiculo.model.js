@@ -1,12 +1,12 @@
 // src/models/Vehiculo.js
-const db = require('../config/database');
+const { pool } = require('../config/database');
 const logger = require('../utils/logger');
 
 class Vehiculo {
     // Crear un nuevo vehículo
     static async create(vehiculoData) {
         try {
-            const [result] = await db.query('INSERT INTO vehiculos SET ?', vehiculoData);
+            const [result] = await pool.query('INSERT INTO vehiculos SET ?', vehiculoData); // ← CAMBIO AQUÍ
             return result.insertId;
         } catch (error) {
             logger.error(`Error al crear vehículo: ${error.message}`);
@@ -69,14 +69,14 @@ class Vehiculo {
             query += ' LIMIT ? OFFSET ?';
             queryParams.push(limit, offset);
 
-            const [vehiculos] = await db.query(query, queryParams);
+            const [vehiculos] = await pool.execute(query, queryParams);
 
             // Obtener total para paginación
             let countQuery = 'SELECT COUNT(*) as total FROM vehiculos v';
             if (whereClauses.length > 0) {
                 countQuery += ' WHERE ' + whereClauses.join(' AND ');
             }
-            const [totalResult] = await db.query(countQuery, queryParams.slice(0, -2));
+            const [totalResult] = await pool.execute(countQuery, queryParams.slice(0, -2));
             const total = totalResult[0].total;
 
             return {
@@ -97,7 +97,7 @@ class Vehiculo {
     // Obtener un vehículo por ID con todos sus detalles
     static async getById(id) {
         try {
-            const [vehiculos] = await db.query(`
+            const [vehiculos] = await pool.execute(`
         SELECT v.*, 
           m.nombre AS marca_nombre, 
           mo.nombre AS modelo_nombre,
@@ -122,7 +122,7 @@ class Vehiculo {
             const vehiculo = vehiculos[0];
 
             // Obtener características del vehículo
-            const [caracteristicas] = await db.query(`
+            const [caracteristicas] = await pool.execute(`
         SELECT c.* FROM vehiculo_caracteristicas vc
         JOIN caracteristicas c ON vc.caracteristica_id = c.id
         WHERE vc.vehiculo_id = ?
@@ -130,7 +130,7 @@ class Vehiculo {
             vehiculo.caracteristicas = caracteristicas;
 
             // Obtener póliza de seguro
-            const [polizas] = await db.query(`
+            const [polizas] = await pool.execute(`
         SELECT ps.*, a.nombre AS aseguradora_nombre 
         FROM polizas_seguro ps
         LEFT JOIN aseguradoras a ON ps.id_aseguradora = a.id
@@ -141,7 +141,7 @@ class Vehiculo {
             vehiculo.poliza_seguro = polizas.length > 0 ? polizas[0] : null;
 
             // Obtener documentos
-            const [documentos] = await db.query(`
+            const [documentos] = await pool.execute(`
         SELECT * FROM documentos_vehiculo
         WHERE id_vehiculo = ?
       `, [id]);
@@ -157,7 +157,7 @@ class Vehiculo {
     // Actualizar vehículo
     static async update(id, vehiculoData) {
         try {
-            const [result] = await db.query('UPDATE vehiculos SET ? WHERE id = ?', [vehiculoData, id]);
+            const [result] = await pool.query('UPDATE vehiculos SET ? WHERE id = ?', [vehiculoData, id]); // ← CAMBIO AQUÍ
             return result.affectedRows > 0;
         } catch (error) {
             logger.error(`Error al actualizar vehículo: ${error.message}`);
@@ -168,7 +168,7 @@ class Vehiculo {
     // Eliminar vehículo
     static async delete(id) {
         try {
-            const [result] = await db.query('DELETE FROM vehiculos WHERE id = ?', [id]);
+            const [result] = await pool.execute('DELETE FROM vehiculos WHERE id = ?', [id]);
             return result.affectedRows > 0;
         } catch (error) {
             logger.error(`Error al eliminar vehículo: ${error.message}`);
@@ -179,7 +179,7 @@ class Vehiculo {
     // Obtener estadísticas de vehículos
     static async getStats() {
         try {
-            const [stats] = await db.query(`
+            const [stats] = await pool.execute(`
         SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN id_estatus = 1 THEN 1 ELSE 0 END) as disponibles,
@@ -199,7 +199,7 @@ class Vehiculo {
     // Obtener vista de flota
     static async getFlota() {
         try {
-            const [flota] = await db.query(`
+            const [flota] = await pool.execute(`
         SELECT 
           ev.id,
           ev.estatus,
@@ -221,13 +221,13 @@ class Vehiculo {
     // Obtener catálogos
     static async getCatalogs() {
         try {
-            const [marcas] = await db.query('SELECT * FROM marcas');
-            const [modelos] = await db.query('SELECT * FROM modelos');
-            const [colores] = await db.query('SELECT * FROM colores');
-            const [tiposAuto] = await db.query('SELECT * FROM tipos_auto');
-            const [transmisiones] = await db.query('SELECT * FROM transmisiones');
-            const [estatus] = await db.query('SELECT * FROM estatus_vehiculo');
-            const [caracteristicas] = await db.query('SELECT * FROM caracteristicas');
+            const [marcas] = await pool.execute('SELECT * FROM marcas');
+            const [modelos] = await pool.execute('SELECT * FROM modelos');
+            const [colores] = await pool.execute('SELECT * FROM colores');
+            const [tiposAuto] = await pool.execute('SELECT * FROM tipos_auto');
+            const [transmisiones] = await pool.execute('SELECT * FROM transmisiones');
+            const [estatus] = await pool.execute('SELECT * FROM estatus_vehiculo');
+            const [caracteristicas] = await pool.execute('SELECT * FROM caracteristicas');
 
             return {
                 marcas,
@@ -255,7 +255,7 @@ class Vehiculo {
                 params.push(excludeId);
             }
 
-            const [result] = await db.query(query, params);
+            const [result] = await pool.execute(query, params);
             return result.length > 0;
         } catch (error) {
             logger.error(`Error al verificar número económico: ${error.message}`);
@@ -266,11 +266,13 @@ class Vehiculo {
     // Actualizar características del vehículo
     static async updateCaracteristicas(vehiculoId, caracteristicasIds) {
         try {
-            await db.query('DELETE FROM vehiculo_caracteristicas WHERE vehiculo_id = ?', [vehiculoId]);
+            await pool.execute('DELETE FROM vehiculo_caracteristicas WHERE vehiculo_id = ?', [vehiculoId]);
 
             if (caracteristicasIds && caracteristicasIds.length > 0) {
                 const values = caracteristicasIds.map(id => [vehiculoId, id]);
-                await db.query('INSERT INTO vehiculo_caracteristicas (vehiculo_id, caracteristica_id) VALUES ?', [values]);
+                const placeholders = caracteristicasIds.map(() => '(?, ?)').join(', ');
+                const flatValues = values.flat();
+                await pool.execute(`INSERT INTO vehiculo_caracteristicas (vehiculo_id, caracteristica_id) VALUES ${placeholders}`, flatValues); // ← CAMBIO AQUÍ
             }
 
             return true;
@@ -283,7 +285,7 @@ class Vehiculo {
     // Agregar documento a vehículo
     static async addDocument(vehiculoId, tipoDocumento, archivo) {
         try {
-            const [result] = await db.query(
+            const [result] = await pool.execute(
                 'INSERT INTO documentos_vehiculo (id_vehiculo, tipo_documento, archivo) VALUES (?, ?, ?)',
                 [vehiculoId, tipoDocumento, archivo]
             );
@@ -297,7 +299,7 @@ class Vehiculo {
     // Obtener vehículos con información de pólizas
     static async getWithPolizas() {
         try {
-            const [vehiculos] = await db.query(`
+            const [vehiculos] = await pool.execute(`
         SELECT 
           v.id,
           v.num_economico,

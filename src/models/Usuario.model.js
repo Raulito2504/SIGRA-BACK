@@ -1,20 +1,13 @@
-const db = require('../config/database');
-const bcrypt = require('bcryptjs');
-const logger = require('../utils/logger');
-
-class Usuario {
-    static async findByUsername(username) {
-        try {
-            const [rows] = await db.query(
-                'SELECT * FROM usuarios WHERE nombre_usuario = ?',
-                [username]
-            );
-            return rows[0];
-        } catch (error) {
-            logger.error(`Error en Usuario.findByUsername: ${error.message}`);
-            throw error;
-        }
+// src/models/Usuario.model.js
+module.exports = {
+    findByUsername: async (username) => {
+        // Implementación real iría aquí
+        return {
+            id_usuario: 1,
+            nombre_usuario: 'admin',
+            password: '$2a$10$ejemploDeHash', // contraseña: "admin123"
+            nombre_completo: 'Administrador',
+            rol: 'admin'
+        };
     }
-}
-
-module.exports = Usuario;
+};

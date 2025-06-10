@@ -1,68 +1,40 @@
+// src/controllers/auth.controller.js
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario.model');
 const logger = require('../utils/logger');
 
 exports.login = async (req, res) => {
     try {
-        const { nombre_usuario, password } = req.body;
+        // Datos de prueba (deberás reemplazar esto con tu lógica real)
+        const testUser = {
+            id: 1,
+            nombre_usuario: 'admin',
+            nombre_completo: 'Administrador',
+            rol: 'admin'
+        };
 
-        // 1. Validar campos
-        if (!nombre_usuario || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Usuario y contraseña requeridos'
-            });
-        }
-
-        // 2. Buscar usuario
-        const usuario = await Usuario.findByUsername(nombre_usuario);
-
-        if (!usuario) {
-            logger.warn(`Intento de login - Usuario no encontrado: ${nombre_usuario}`);
-            return res.status(401).json({
-                success: false,
-                message: 'Credenciales inválidas'
-            });
-        }
-
-        // 3. Verificar contraseña
-        const isMatch = await bcrypt.compare(password, usuario.password);
-        if (!isMatch) {
-            logger.warn(`Intento de login - Contraseña incorrecta para: ${nombre_usuario}`);
-            return res.status(401).json({
-                success: false,
-                message: 'Credenciales inválidas'
-            });
-        }
-
-        // 4. Generar token
+        // Generar token
         const token = jwt.sign(
             {
-                id: usuario.id_usuario,
-                nombre: usuario.nombre_completo,
-                rol: usuario.rol
+                id: testUser.id,
+                nombre: testUser.nombre_completo,
+                rol: testUser.rol
             },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
         );
 
-        // 5. Responder
         res.json({
             success: true,
-            message: 'Autenticación exitosa',
+            message: 'Login exitoso (modo prueba)',
             data: {
                 token,
-                usuario: {
-                    id: usuario.id_usuario,
-                    nombre: usuario.nombre_completo,
-                    rol: usuario.rol
-                }
+                usuario: testUser
             }
         });
 
     } catch (error) {
-        logger.error(`Error en auth.controller: ${error.message}`);
+        logger.error(`Error en login: ${error.message}`);
         res.status(500).json({
             success: false,
             message: 'Error en el servidor'
