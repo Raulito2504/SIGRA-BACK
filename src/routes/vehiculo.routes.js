@@ -1,6 +1,11 @@
+// src/routes/vehiculo.routes.js
 const express = require('express');
 const router = express.Router();
+
+// ✅ Importa el controlador
 const vehiculoController = require('../controllers/vehiculo.controller');
+
+// ✅ Importa middleware faltante
 const validationMiddleware = require('../middleware/validation.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
 const upload = require('../config/multer.config');
@@ -8,24 +13,25 @@ const upload = require('../config/multer.config');
 // Middleware de autenticación
 router.use(authMiddleware.authenticate);
 
-// ⚠️ RUTAS ESPECÍFICAS PRIMERO (antes que /:id)
-router.get('/search', vehiculoController.search);
+// ✅ Rutas específicas
+router.get('/search', vehiculoController.search);        // ← Línea 15
 router.get('/stats', vehiculoController.getStats);
 router.get('/flota', vehiculoController.getFlota);
-router.get('/catalogs', vehiculoController.getCatalogs);
 router.get('/polizas', vehiculoController.getWithPolizas);
 
-// ⚠️ RUTAS CRUD (con /:id al final)
+// ✅ CRUD
 router.get('/', vehiculoController.getAll);
 router.post('/', validationMiddleware.validateVehiculo, vehiculoController.create);
 router.put('/:id', validationMiddleware.validateVehiculo, vehiculoController.update);
-// router.patch('/:id', vehiculoController.partialUpdate); // Opcional
-
-// ⚠️ RUTAS CON PARÁMETROS AL FINAL
 router.get('/:id', vehiculoController.getById);
+router.delete('/:id', vehiculoController.delete);
 
-// Documentos (estas también usan parámetros, pero son más específicas)
-router.post('/:id/documents', upload.single('documento'), vehiculoController.addDocument);
+// ✅ Documentos
+router.post('/:id/documents', 
+    validationMiddleware.validateDocument, 
+    upload.single('documento'), 
+    vehiculoController.addDocument
+);
 router.get('/:id/documents', vehiculoController.getDocuments);
 
 module.exports = router;
