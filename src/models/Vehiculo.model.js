@@ -53,10 +53,10 @@ class Vehiculo {
             }
             if (filters.search) {
                 whereClauses.push(`
-          (v.num_economico LIKE ? OR 
-          v.placas LIKE ? OR 
-          v.motor LIKE ? OR 
-          v.numero_serie LIKE ?)
+            (v.num_economico LIKE ? OR 
+            v.placas LIKE ? OR 
+            v.motor LIKE ? OR 
+            v.numero_serie LIKE ?)
         `);
                 const searchParam = `%${filters.search}%`;
                 queryParams.push(searchParam, searchParam, searchParam, searchParam);
@@ -99,12 +99,12 @@ class Vehiculo {
         try {
             const [vehiculos] = await db.query(`
         SELECT v.*, 
-          m.nombre AS marca_nombre, 
-          mo.nombre AS modelo_nombre,
-          c.nombre AS color_nombre,
-          ta.tipo AS tipo_auto,
-          t.tipo AS transmision,
-          ev.estatus AS estatus_vehiculo
+            m.nombre AS marca_nombre, 
+            mo.nombre AS modelo_nombre,
+            c.nombre AS color_nombre,
+            ta.tipo AS tipo_auto,
+            t.tipo AS transmision,
+            ev.estatus AS estatus_vehiculo
         FROM vehiculos v
         LEFT JOIN marcas m ON v.id_marca = m.id
         LEFT JOIN modelos mo ON v.id_modelo = mo.id
@@ -113,7 +113,7 @@ class Vehiculo {
         LEFT JOIN transmisiones t ON v.id_transmision = t.id
         LEFT JOIN estatus_vehiculo ev ON v.id_estatus = ev.id
         WHERE v.id = ?
-      `, [id]);
+        `, [id]);
 
             if (vehiculos.length === 0) {
                 return null;
@@ -126,7 +126,7 @@ class Vehiculo {
         SELECT c.* FROM vehiculo_caracteristicas vc
         JOIN caracteristicas c ON vc.caracteristica_id = c.id
         WHERE vc.vehiculo_id = ?
-      `, [id]);
+    `, [id]);
             vehiculo.caracteristicas = caracteristicas;
 
             // Obtener póliza de seguro
@@ -137,14 +137,14 @@ class Vehiculo {
         WHERE ps.id_vehiculo = ?
         ORDER BY ps.fecha_vencimiento DESC
         LIMIT 1
-      `, [id]);
+    `, [id]);
             vehiculo.poliza_seguro = polizas.length > 0 ? polizas[0] : null;
 
             // Obtener documentos
             const [documentos] = await db.query(`
         SELECT * FROM documentos_vehiculo
         WHERE id_vehiculo = ?
-      `, [id]);
+    `, [id]);
             vehiculo.documentos = documentos;
 
             return vehiculo;
@@ -181,13 +181,13 @@ class Vehiculo {
         try {
             const [stats] = await db.query(`
         SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN id_estatus = 1 THEN 1 ELSE 0 END) as disponibles,
-          SUM(CASE WHEN id_estatus = 2 THEN 1 ELSE 0 END) as en_mantenimiento,
-          SUM(CASE WHEN id_estatus = 3 THEN 1 ELSE 0 END) as ocupados,
-          SUM(CASE WHEN id_estatus = 4 THEN 1 ELSE 0 END) as en_taller
+            COUNT(*) as total,
+            SUM(CASE WHEN id_estatus = 1 THEN 1 ELSE 0 END) as disponibles,
+            SUM(CASE WHEN id_estatus = 2 THEN 1 ELSE 0 END) as en_mantenimiento,
+            SUM(CASE WHEN id_estatus = 3 THEN 1 ELSE 0 END) as ocupados,
+            SUM(CASE WHEN id_estatus = 4 THEN 1 ELSE 0 END) as en_taller
         FROM vehiculos
-      `);
+    `);
 
             return stats[0];
         } catch (error) {
@@ -201,15 +201,15 @@ class Vehiculo {
         try {
             const [flota] = await db.query(`
         SELECT 
-          ev.id,
-          ev.estatus,
-          COUNT(v.id) as cantidad,
-          GROUP_CONCAT(v.id) as ids_vehiculos
+            ev.id,
+            ev.estatus,
+            COUNT(v.id) as cantidad,
+            GROUP_CONCAT(v.id) as ids_vehiculos
         FROM estatus_vehiculo ev
         LEFT JOIN vehiculos v ON ev.id = v.id_estatus
         GROUP BY ev.id, ev.estatus
         ORDER BY ev.id
-      `);
+    `);
 
             return flota;
         } catch (error) {
@@ -299,32 +299,32 @@ class Vehiculo {
         try {
             const [vehiculos] = await db.query(`
         SELECT 
-          v.id,
-          v.num_economico,
-          v.placas,
-          m.nombre AS marca,
-          mo.nombre AS modelo,
-          ev.estatus,
-          ps.numero_poliza,
-          ps.fecha_vencimiento,
-          a.nombre AS aseguradora,
-          DATEDIFF(ps.fecha_vencimiento, CURDATE()) AS dias_restantes
+            v.id,
+            v.num_economico,
+            v.placas,
+            m.nombre AS marca,
+            mo.nombre AS modelo,
+            ev.estatus,
+            ps.numero_poliza,
+            ps.fecha_vencimiento,
+            a.nombre AS aseguradora,
+            DATEDIFF(ps.fecha_vencimiento, CURDATE()) AS dias_restantes
         FROM vehiculos v
         LEFT JOIN marcas m ON v.id_marca = m.id
         LEFT JOIN modelos mo ON v.id_modelo = mo.id
         LEFT JOIN estatus_vehiculo ev ON v.id_estatus = ev.id
         LEFT JOIN (
-          SELECT id_vehiculo, numero_poliza, fecha_vencimiento, id_aseguradora
-          FROM polizas_seguro
-          WHERE (id_vehiculo, fecha_vencimiento) IN (
+            SELECT id_vehiculo, numero_poliza, fecha_vencimiento, id_aseguradora
+            FROM polizas_seguro
+            WHERE (id_vehiculo, fecha_vencimiento) IN (
             SELECT id_vehiculo, MAX(fecha_vencimiento)
             FROM polizas_seguro
             GROUP BY id_vehiculo
-          )
+            )
         ) ps ON v.id = ps.id_vehiculo
         LEFT JOIN aseguradoras a ON ps.id_aseguradora = a.id
         ORDER BY ps.fecha_vencimiento ASC
-      `);
+    `);
 
             return vehiculos;
         } catch (error) {
