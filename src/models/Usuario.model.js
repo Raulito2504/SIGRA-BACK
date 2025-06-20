@@ -1,3 +1,4 @@
+//src/models/Usuario.model.js
 const { pool } = require('../config/database');
 const logger = require('../utils/logger');
 const bcrypt = require('bcryptjs');

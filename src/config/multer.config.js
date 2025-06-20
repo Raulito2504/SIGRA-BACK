@@ -1,24 +1,52 @@
 // src/config/multer.config.js
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
 const logger = require('../utils/logger');
+
+// Función para crear directorio de forma asíncrona (alternativa)
+const ensureUploadDirAsync = async (uploadDir) => {
+    try {
+        await fs.promises.access(uploadDir, fs.constants.F_OK);
+    } catch (error) {
+        try {
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+        } catch (mkdirError) {
+            logger.error(`No se pudo crear la carpeta uploads: ${mkdirError.message}`);
+            throw new Error('No se pudo crear el directorio de subidas');
+        }
+    }
+};
+
+// Función para crear directorio de forma síncrona (recomendada)
+const ensureUploadDir = (uploadDir) => {
+    try {
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        return true;
+    } catch (error) {
+        logger.error(`No se pudo crear la carpeta uploads: ${error.message}`);
+        return false;
+    }
+};
 
 // Configuración de almacenamiento
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../../uploads');
-        try {
-            await fs.access(uploadDir, fs.constants.F_OK);
-        } catch (error) {
-            try {
-                await fs.mkdir(uploadDir, { recursive: true });
-            } catch (mkdirError) {
-                logger.error(`No se pudo crear la carpeta uploads: ${mkdirError.message}`);
-                return cb(new Error('No se pudo crear el directorio de subidas'));
-            }
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../../uploads/file');
+        
+        // Usando la versión síncrona (recomendada para Multer)
+        if (ensureUploadDir(uploadDir)) {
+            cb(null, uploadDir);
+        } else {
+            cb(new Error('No se pudo crear el directorio de subidas'));
         }
-        cb(null, uploadDir);
+        
+        // Si quieres usar la versión asíncrona (menos recomendada):
+        // ensureUploadDirAsync(uploadDir)
+        //     .then(() => cb(null, uploadDir))
+        //     .catch(error => cb(error));
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
