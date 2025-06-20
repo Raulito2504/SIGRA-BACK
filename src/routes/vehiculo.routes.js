@@ -3,7 +3,8 @@ const express = require('express');
 const router = express.Router();
 
 // ✅ Importaciones limpias y ordenadas
-const vehiculocontroller = require('../controllers/vehiculo.controller');
+const vehiculoController = require('../controllers/vehiculo.controller');
+const docsVehiculoController = require('../controllers/DocsVehiculos.controller');
 const validationMiddleware = require('../middleware/validation.middleware');
 const authMiddleware = require('../middleware/auth.middleware');
 const upload = require('../config/multer.config');
@@ -12,23 +13,30 @@ const upload = require('../config/multer.config');
 router.use(authMiddleware.authenticate);
 
 // ✅ Rutas específicas primero (más específicas antes que genéricas)
-router.get('/search', vehiculocontroller.search);        
-router.get('/stats', vehiculocontroller.getStats);
-router.get('/flota', vehiculocontroller.getFlota);
+router.get('/search', vehiculoController.search);        
+router.get('/stats', vehiculoController.getStats);
+router.get('/flota', vehiculoController.getFlota);
 
-// ✅ Rutas de pólizas que necesitan ir antes de las rutas con parámetros
-router.get('/polizas/expiring', vehiculocontroller.getPolizasExpiringSoon);
+// ✅ Rutas de pólizas globales que necesitan ir antes de las rutas con parámetros
+router.get('/polizas/expiring', docsVehiculoController.getPolizasExpiringSoon);
 
 // ✅ CRUD básico de vehículos
-router.get('/', vehiculocontroller.getAll);
-router.post('/', validationMiddleware.validateVehiculo, vehiculocontroller.create);
-router.get('/:id', vehiculocontroller.getById);
-router.put('/:id', validationMiddleware.validateVehiculo, vehiculocontroller.update);
-router.delete('/:id', vehiculocontroller.delete);
+router.get('/', vehiculoController.getAll);
+router.post('/', validationMiddleware.validateVehiculo, vehiculoController.create);
+router.get('/:id', vehiculoController.getById);
+router.put('/:id', validationMiddleware.validateVehiculo, vehiculoController.update);
+router.delete('/:id', vehiculoController.delete);
 
 // ========================================
 // RUTAS PARA DOCUMENTOS GENERALES
 // ========================================
+
+/**
+ * @route   GET /api/vehiculos/documents/tipos
+ * @desc    Obtener tipos de documentos disponibles
+ * @access  Private
+ */
+router.get('/documents/tipos', docsVehiculoController.getTiposDocumentos);
 
 /**
  * @route   GET /api/vehiculos/:id/documents/stats
@@ -36,7 +44,15 @@ router.delete('/:id', vehiculocontroller.delete);
  * @access  Private
  * @params  id: ID del vehículo
  */
-router.get('/:id/documents/stats', vehiculocontroller.getEstadisticasDocumentos);
+router.get('/:id/documents/stats', docsVehiculoController.getEstadisticasDocumentos);
+
+/**
+ * @route   GET /api/vehiculos/:id/documents/resumen
+ * @desc    Obtener resumen de documentos del vehículo
+ * @access  Private
+ * @params  id: ID del vehículo
+ */
+router.get('/:id/documents/resumen', docsVehiculoController.getResumenDocumentos);
 
 /**
  * @route   POST /api/vehiculos/:id/documents
@@ -49,7 +65,7 @@ router.post(
     '/:id/documents',
     upload.single('documento'),
     validationMiddleware.validarDocumento,
-    vehiculocontroller.addDocument
+    docsVehiculoController.addDocument
 );
 
 /**
@@ -59,7 +75,7 @@ router.post(
  * @params  id: ID del vehículo
  * @query   tipo: Filtrar por tipo de documento (opcional)
  */
-router.get('/:id/documents', vehiculocontroller.getDocuments);
+router.get('/:id/documents', docsVehiculoController.getDocuments);
 
 /**
  * @route   GET /api/vehiculos/:id/documents/:tipo
@@ -67,7 +83,7 @@ router.get('/:id/documents', vehiculocontroller.getDocuments);
  * @access  Private
  * @params  id: ID del vehículo, tipo: Tipo de documento
  */
-router.get('/:id/documents/:tipo', vehiculocontroller.getDocumentsByType);
+router.get('/:id/documents/:tipo', docsVehiculoController.getDocumentsByType);
 
 /**
  * @route   GET /api/vehiculos/documents/:documentId/download
@@ -75,7 +91,7 @@ router.get('/:id/documents/:tipo', vehiculocontroller.getDocumentsByType);
  * @access  Private
  * @params  documentId: ID del documento
  */
-router.get('/documents/:documentId/download', vehiculocontroller.downloadDocument);
+router.get('/documents/:documentId/download', docsVehiculoController.downloadDocument);
 
 /**
  * @route   PUT /api/vehiculos/documents/:documentId
@@ -87,8 +103,7 @@ router.get('/documents/:documentId/download', vehiculocontroller.downloadDocumen
 router.put(
     '/documents/:documentId',
     upload.single('documento'),
-    validationMiddleware.validarDocumento,
-    vehiculocontroller.updateDocument
+    docsVehiculoController.updateDocument
 );
 
 /**
@@ -97,7 +112,7 @@ router.put(
  * @access  Private
  * @params  documentId: ID del documento
  */
-router.delete('/documents/:documentId', vehiculocontroller.deleteDocument);
+router.delete('/documents/:documentId', docsVehiculoController.deleteDocument);
 
 // ========================================
 // RUTAS PARA PÓLIZAS DE SEGURO
@@ -114,7 +129,7 @@ router.post(
     '/:id/polizas',
     upload.single('poliza'),
     validationMiddleware.validarPoliza,
-    vehiculocontroller.addPoliza
+    docsVehiculoController.addPoliza
 );
 
 /**
@@ -124,7 +139,7 @@ router.post(
  * @params  id: ID del vehículo
  * @query   activa: Filtrar por estado activo (true/false - opcional)
  */
-router.get('/:id/polizas', vehiculocontroller.getPolizas);
+router.get('/:id/polizas', docsVehiculoController.getPolizas);
 
 /**
  * @route   GET /api/vehiculos/polizas/:polizaId/download
@@ -132,7 +147,7 @@ router.get('/:id/polizas', vehiculocontroller.getPolizas);
  * @access  Private
  * @params  polizaId: ID de la póliza
  */
-router.get('/polizas/:polizaId/download', vehiculocontroller.downloadPoliza);
+router.get('/polizas/:polizaId/download', docsVehiculoController.downloadPoliza);
 
 /**
  * @route   PUT /api/vehiculos/polizas/:polizaId
@@ -145,7 +160,7 @@ router.put(
     '/polizas/:polizaId',
     upload.single('poliza'),
     validationMiddleware.validarPoliza,
-    vehiculocontroller.updatePoliza
+    docsVehiculoController.updatePoliza
 );
 
 /**
@@ -154,6 +169,6 @@ router.put(
  * @access  Private
  * @params  polizaId: ID de la póliza
  */
-router.delete('/polizas/:polizaId', vehiculocontroller.deletePoliza);
+router.delete('/polizas/:polizaId', docsVehiculoController.deletePoliza);
 
 module.exports = router;
