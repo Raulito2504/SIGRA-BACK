@@ -4,6 +4,7 @@ const { validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 
 // Crear un nuevo vehículo
+
 exports.create = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -14,11 +15,12 @@ exports.create = async (req, res) => {
     }
 
     try {
-        const { caracteristicas, ...vehiculoData } = req.body;
+        // ✅ No desestructures `num_economico` aquí
+        const vehiculoData = req.body;
 
         // Verificar si el número económico ya existe
-        const numEconomicoExists = await Vehiculo.checkNumEconomicoExists(vehiculoData.num_economico);
-        if (numEconomicoExists) {
+        const exists = await Vehiculo.checkNumEconomicoExists(vehiculoData.num_economico);
+        if (exists) {
             return res.status(400).json({
                 success: false,
                 message: 'El número económico ya está en uso'
@@ -26,14 +28,7 @@ exports.create = async (req, res) => {
         }
 
         const vehiculoId = await Vehiculo.create(vehiculoData);
-
-        // Si hay características, asignarlas al vehículo
-        if (caracteristicas && caracteristicas.length > 0) {
-            await Vehiculo.updateCaracteristicas(vehiculoId, caracteristicas);
-        }
-
         const vehiculo = await Vehiculo.getById(vehiculoId);
-
         res.status(201).json({
             success: true,
             message: 'Vehículo creado correctamente',
@@ -49,23 +44,21 @@ exports.create = async (req, res) => {
     }
 };
 
-// Obtener todos los vehículos con paginación y filtros
+// Obtener todos los vehículos
 exports.getAll = async (req, res) => {
     try {
         const { page = 1, limit = 10, ...filters } = req.query;
-
+        
         const result = await Vehiculo.getAll({
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: parseInt(page) || 1,
+            limit: parseInt(limit) || 10,
             filters
         });
-
-        // Obtener estadísticas para el dashboard
+        
         const stats = await Vehiculo.getStats();
-
+        
         res.json({
             success: true,
-            message: 'Vehículos obtenidos correctamente',
             data: {
                 vehiculos: result.vehiculos,
                 stats
@@ -81,19 +74,16 @@ exports.getAll = async (req, res) => {
         });
     }
 };
-
 // Obtener un vehículo por ID
 exports.getById = async (req, res) => {
     try {
         const vehiculo = await Vehiculo.getById(req.params.id);
-
         if (!vehiculo) {
             return res.status(404).json({
                 success: false,
                 message: 'Vehículo no encontrado'
             });
         }
-
         res.json({
             success: true,
             data: { vehiculo }
@@ -120,35 +110,25 @@ exports.update = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { caracteristicas, ...vehiculoData } = req.body;
-
+        const { num_economico } = req.body;
         // Verificar si el número económico ya existe (excluyendo el vehículo actual)
-        if (vehiculoData.num_economico) {
-            const numEconomicoExists = await Vehiculo.checkNumEconomicoExists(vehiculoData.num_economico, id);
-            if (numEconomicoExists) {
+        if (num_economico) {
+            const exists = await Vehiculo.checkNumEconomicoExists(num_economico, id);
+            if (exists) {
                 return res.status(400).json({
                     success: false,
                     message: 'El número económico ya está en uso'
                 });
             }
         }
-
-        const updated = await Vehiculo.update(id, vehiculoData);
-
+        const updated = await Vehiculo.update(id, req.body);
         if (!updated) {
             return res.status(404).json({
                 success: false,
                 message: 'Vehículo no encontrado'
             });
         }
-
-        // Actualizar características si se proporcionan
-        if (caracteristicas) {
-            await Vehiculo.updateCaracteristicas(id, caracteristicas);
-        }
-
         const vehiculo = await Vehiculo.getById(id);
-
         res.json({
             success: true,
             message: 'Vehículo actualizado correctamente',
@@ -163,62 +143,17 @@ exports.update = async (req, res) => {
         });
     }
 };
-// Actualizar parcialmente un vehículo
-exports.partialUpdate = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updateData = req.body;
-
-        // Validación básica
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Debe proporcionar al menos un campo para actualizar'
-            });
-        }
-
-        // Actualización en la base de datos
-        const [result] = await db.query(
-            'UPDATE vehiculos SET ? WHERE id = ?',
-            [updateData, id]
-        );
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Vehículo no encontrado'
-            });
-        }
-
-        const vehiculoActualizado = await Vehiculo.getById(id);
-
-        res.json({
-            success: true,
-            message: 'Vehículo actualizado parcialmente',
-            data: vehiculoActualizado
-        });
-    } catch (error) {
-        logger.error(`Error en partialUpdate: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Error al actualizar vehículo',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-};
 
 // Eliminar vehículo
 exports.delete = async (req, res) => {
     try {
         const deleted = await Vehiculo.delete(req.params.id);
-
         if (!deleted) {
             return res.status(404).json({
                 success: false,
                 message: 'Vehículo no encontrado'
             });
         }
-
         res.json({
             success: true,
             message: 'Vehículo eliminado correctamente'
@@ -232,12 +167,27 @@ exports.delete = async (req, res) => {
         });
     }
 };
-
+exports.search = async (req, res) => {
+    try {
+        const filters = req.query;
+        const result = await Vehiculo.getAll({ filters });
+        res.json({
+            success: true,
+            data: { vehiculos: result.vehiculos }
+        });
+    } catch (error) {
+        logger.error(`Error en search vehículos: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Error al buscar vehículos',
+            error: error.message
+        });
+    }
+};
 // Obtener estadísticas de vehículos
 exports.getStats = async (req, res) => {
     try {
         const stats = await Vehiculo.getStats();
-
         res.json({
             success: true,
             data: { stats }
@@ -252,11 +202,10 @@ exports.getStats = async (req, res) => {
     }
 };
 
-// Obtener vista de flota
+// Obtener flota
 exports.getFlota = async (req, res) => {
     try {
         const flota = await Vehiculo.getFlota();
-
         res.json({
             success: true,
             data: { flota }
@@ -265,58 +214,16 @@ exports.getFlota = async (req, res) => {
         logger.error(`Error en getFlota: ${error.message}`);
         res.status(500).json({
             success: false,
-            message: 'Error al obtener vista de flota',
+            message: 'Error al obtener flota',
             error: error.message
         });
     }
 };
 
-// Obtener catálogos
-exports.getCatalogs = async (req, res) => {
-    try {
-        const catalogs = await Vehiculo.getCatalogs();
-
-        res.json({
-            success: true,
-            data: catalogs
-        });
-    } catch (error) {
-        logger.error(`Error en getCatalogs: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Error al obtener catálogos',
-            error: error.message
-        });
-    }
-};
-
-// Búsqueda avanzada de vehículos
-exports.search = async (req, res) => {
-    try {
-        const filters = req.query;
-        const result = await Vehiculo.getAll({ filters });
-
-        res.json({
-            success: true,
-            data: {
-                vehiculos: result.vehiculos
-            }
-        });
-    } catch (error) {
-        logger.error(`Error en search vehículos: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Error al buscar vehículos',
-            error: error.message
-        });
-    }
-};
-
-// Obtener vehículos con información de pólizas
+// Obtener vehículos con pólizas próximas a vencer
 exports.getWithPolizas = async (req, res) => {
     try {
         const vehiculos = await Vehiculo.getWithPolizas();
-
         res.json({
             success: true,
             data: { vehiculos }
@@ -336,20 +243,13 @@ exports.addDocument = async (req, res) => {
     try {
         const { id } = req.params;
         const { tipo_documento } = req.body;
-
         if (!req.file) {
             return res.status(400).json({
                 success: false,
                 message: 'No se ha subido ningún archivo'
             });
         }
-
-        const documentId = await Vehiculo.addDocument(
-            id,
-            tipo_documento,
-            req.file.filename
-        );
-
+        const documentId = await Vehiculo.addDocument(id, tipo_documento, req.file.filename, req.user.id_usuario);
         res.status(201).json({
             success: true,
             message: 'Documento agregado correctamente',
@@ -365,22 +265,13 @@ exports.addDocument = async (req, res) => {
     }
 };
 
-// Obtener documentos de vehículo
+// Obtener documentos de un vehículo
 exports.getDocuments = async (req, res) => {
     try {
-        const { id } = req.params;
-        const vehiculo = await Vehiculo.getById(id);
-
-        if (!vehiculo) {
-            return res.status(404).json({
-                success: false,
-                message: 'Vehículo no encontrado'
-            });
-        }
-
+        const documentos = await Vehiculo.getDocuments(req.params.id);
         res.json({
             success: true,
-            data: { documentos: vehiculo.documentos }
+            data: { documentos }
         });
     } catch (error) {
         logger.error(`Error en getDocuments: ${error.message}`);
@@ -391,3 +282,4 @@ exports.getDocuments = async (req, res) => {
         });
     }
 };
+

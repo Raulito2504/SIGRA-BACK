@@ -8,7 +8,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    port: process.env.DB_PORT || 3306,  
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -27,7 +27,19 @@ async function connectDB() {
     }
 }
 
+// Función helper para ejecutar queries fácilmente
+async function query(sql, params = []) {
+    try {
+        const [rows] = await pool.execute(sql, params);
+        return rows;
+    } catch (error) {
+        logger.error('Error en query:', error);
+        throw error;
+    }
+}
+
 module.exports = {
     pool,
-    connectDB
+    connectDB,
+    query  
 };
