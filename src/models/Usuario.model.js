@@ -1,9 +1,9 @@
+// src/models/usuario.model.js
 const { pool } = require('../config/database');
 const logger = require('../utils/logger');
 const bcrypt = require('bcryptjs');
 
 class Usuario {
-    // Buscar usuario por nombre de usuario
     static async findByUsername(nombre_usuario) {
         try {
             const [rows] = await pool.execute(
@@ -17,7 +17,6 @@ class Usuario {
         }
     }
 
-    // Buscar usuario por email
     static async findByEmail(email) {
         try {
             const [rows] = await pool.execute(
@@ -31,32 +30,26 @@ class Usuario {
         }
     }
 
-    // Crear un nuevo usuario
-    static async create(userData) {
+    static async create({ nombre_usuario, email, password, nombre_completo, id_rol }) {
         try {
-            // Encriptar contraseña
-            const hashedPassword = await bcrypt.hash(userData.password, 10);
-
-            // Insertar en la base de datos
+            const hashedPassword = await bcrypt.hash(password, 10);
             const [result] = await pool.execute(
-                'INSERT INTO usuarios (nombre_usuario, email, password, nombre_completo, id_rol) VALUES (?, ?, ?, ?, ?)',
-                [
-                    userData.nombre_usuario,
-                    userData.email,
-                    hashedPassword,
-                    userData.nombre_completo,
-                    userData.id_rol
-                ]
+                'INSERT INTO usuarios (nombre_usuario, email, password, nombre_completo, id_rol, activo) VALUES (?, ?, ?, ?, ?, ?)',
+                [nombre_usuario, email, hashedPassword, nombre_completo, id_rol, true]
             );
 
-            return result.insertId;
+            const [rows] = await pool.execute(
+                'SELECT * FROM usuarios WHERE id_usuario = ?',
+                [result.insertId]
+            );
+
+            return rows[0];
         } catch (error) {
             logger.error(`Error al crear usuario: ${error.message}`);
             throw error;
         }
     }
 
-    // Actualizar contraseña
     static async updatePassword(id_usuario, newPassword) {
         try {
             const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -71,10 +64,13 @@ class Usuario {
         }
     }
 
-    // Obtener todos los usuarios (opcional)
     static async getAll() {
         try {
-            const [rows] = await pool.execute('SELECT * FROM usuarios');
+            const [rows] = await pool.execute(`
+                SELECT u.id_usuario, u.nombre_usuario, u.email, u.nombre_completo, u.activo, r.nombre AS rol
+                FROM usuarios u
+                JOIN roles r ON u.id_rol = r.id
+            `);
             return rows;
         } catch (error) {
             logger.error(`Error al obtener usuarios: ${error.message}`);
@@ -82,33 +78,35 @@ class Usuario {
         }
     }
 
-    static async create({ nombre_usuario, password, nombre_completo, id_rol }) {
+    static async updateEstado(id_usuario, activo) {
         try {
-            // Hash de la contraseña
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            const [result] = await db.query(
-                'INSERT INTO usuarios (nombre_usuario, password, nombre_completo, id_rol, activo) VALUES (?, ?, ?, ?, ?)',
-                [nombre_usuario, hashedPassword, nombre_completo, id_rol, true]
+            const [result] = await pool.execute(
+                'UPDATE usuarios SET activo = ? WHERE id_usuario = ?',
+                [activo, id_usuario]
             );
-
-            // Obtener el usuario recién creado
-            const [rows] = await db.query(
-                'SELECT * FROM usuarios WHERE id_usuario = ?',
-                [result.insertId]
-            );
-
-            return rows[0];
+            return result.affectedRows > 0;
         } catch (error) {
-            logger.error(`Error en Usuario.create: ${error.message}`);
+            logger.error(`Error al cambiar estado del usuario: ${error.message}`);
+            throw error;
+        }
+    }
+
+    static async delete(id_usuario) {
+        try {
+            const [result] = await pool.execute(
+                'DELETE FROM usuarios WHERE id_usuario = ?',
+                [id_usuario]
+            );
+            return result.affectedRows > 0;
+        } catch (error) {
+            logger.error(`Error al eliminar usuario: ${error.message}`);
             throw error;
         }
     }
 
     static async usernameExists(username) {
         try {
-            const [rows] = await db.query(
+            const [rows] = await pool.execute(
                 'SELECT id_usuario FROM usuarios WHERE nombre_usuario = ?',
                 [username]
             );

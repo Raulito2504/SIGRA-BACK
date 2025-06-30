@@ -87,4 +87,13 @@ connectDB()
         process.exit(1);
     });
 
+    // Importar rutas
+const vehiculoRoutes = require('./src/routes/vehiculo.routes');
+const authRoutes = require('./src/routes/auth.routes');
+const clientesRoutes = require('./src/routes/clientes');  // <-- Agrega esta línea
+
+// Rutas base
+app.use('/api/auth', authRoutes);
+app.use('/api/clientes', clientesRoutes);  // <-- Agrega esta línea
+
 module.exports = app;
