@@ -8,6 +8,7 @@ const { createServer } = require('http');
 const { connectDB } = require('./src/config/database');
 const logger = require('./src/utils/logger');
 
+
 // Validar variables de entorno críticas
 const requiredEnv = ['PORT', 'DB_HOST', 'DB_NAME', 'JWT_SECRET'];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -31,10 +32,15 @@ app.use(morgan('dev'));
 // Importar rutas
 const vehiculoRoutes = require('./src/routes/vehiculo.routes');
 const authRoutes = require('./src/routes/auth.routes');
+const clienteRoutes = require('./src/routes/cliente.routes');
+const contratoRoutes = require('./src/routes/contrato.routes');
 
 // Rutas base
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/auth', authRoutes);
+
+app.use('/api/clientes', clienteRoutes);
+app.use('/api/contratos', contratoRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
