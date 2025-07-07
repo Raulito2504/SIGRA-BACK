@@ -1,0 +1,421 @@
+
+CREATE DATABASE Carbuster_1;
+DROP DATABASE Carbuster_1;
+USE Carbuster_1;
+
+-- =============================================
+-- TABLAS DE CATÁLOGO
+-- =============================================
+
+-- Roles
+CREATE TABLE roles (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	nombre VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Métodos de pago
+CREATE TABLE metodos_pago (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	nombre VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Tipos de cambio
+CREATE TABLE tipos_cambio (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	codigo_moneda VARCHAR(10) UNIQUE NOT NULL
+);
+
+-- Tipos de contrato
+CREATE TABLE tipos_contrato (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	tipo VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Estatus de vehículos
+CREATE TABLE estatus_vehiculo (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	estatus VARCHAR(30) UNIQUE NOT NULL
+);
+
+-- =============================================
+-- AGENCIAS/SUCURSALES
+-- =============================================
+
+CREATE TABLE agencias (
+	id_agencia INT PRIMARY KEY AUTO_INCREMENT,
+	codigo VARCHAR(10) UNIQUE NOT NULL,
+	nombre VARCHAR(100) NOT NULL,
+	direccion VARCHAR(200),
+	ciudad VARCHAR(50),
+	estado VARCHAR(50),
+	codigo_postal VARCHAR(10),
+	telefono VARCHAR(20),
+	email VARCHAR(100),
+	responsable VARCHAR(100),
+	activa BOOLEAN DEFAULT TRUE,
+	fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- VEHÍCULOS
+-- =============================================
+
+CREATE TABLE vehiculos (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	num_economico VARCHAR(10) UNIQUE NOT NULL,
+	placas VARCHAR(20),
+	motor VARCHAR(50),
+	numero_serie VARCHAR(50) UNIQUE,
+	gps VARCHAR(50),
+	anio YEAR,
+	capacidad_gasolina DECIMAL(5,2),
+	num_pasajeros INT,
+	num_maletas INT,
+	num_puertas INT,
+	marca VARCHAR(50) NOT NULL,
+	modelo VARCHAR(100) NOT NULL,
+	color VARCHAR(30),
+	tipo_vehiculo VARCHAR(50), -- sedan, suv, compacto, etc.
+	transmision VARCHAR(30), -- manual, automática
+	caracteristicas TEXT, -- "aire acondicionado, bluetooth, gps, asientos de cuero"
+	observaciones TEXT,
+	id_estatus INT NOT NULL,
+	fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (id_estatus) REFERENCES estatus_vehiculo(id)
+);
+
+-- =============================================
+-- USUARIOS
+-- =============================================
+
+CREATE TABLE usuarios (
+	id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+	nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
+	email VARCHAR(50) NOT NULL UNIQUE,	
+	password VARCHAR(255) NOT NULL,
+	nombre_completo VARCHAR(100) NOT NULL,
+	id_rol INT NOT NULL,
+	activo BOOLEAN DEFAULT TRUE,
+	fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (id_rol) REFERENCES roles(id)
+);
+
+-- =============================================
+-- CLIENTES
+-- =============================================
+
+CREATE TABLE clientes (
+    id_cliente INT PRIMARY KEY AUTO_INCREMENT,
+    -- CAMPOS OBLIGATORIOS 
+    nombre_completo VARCHAR(150) NOT NULL,
+    domicilio_hotel VARCHAR(200) NOT NULL, -- Hotel donde se hospeda
+    ciudad VARCHAR(50) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    licencia_conducir VARCHAR(50) NOT NULL,
+    
+    -- CAMPOS OPCIONALES
+    numero_tarjeta VARCHAR(20), -- Solo para referencia, sin encriptar
+    colonia VARCHAR(50),
+    codigo_postal VARCHAR(10),
+    correo_electronico VARCHAR(100),
+    razon_social VARCHAR(100), -- Para empresas
+    domicilio_permanente VARCHAR(200), -- Domicilio real del cliente
+    rfc VARCHAR(15),
+    
+    -- CONDUCTOR AUTORIZADO ADICIONAL (campos opcionales)
+    conductor_autorizado_nombre VARCHAR(100),
+    conductor_autorizado_licencia VARCHAR(50),
+    conductor_autorizado_telefono VARCHAR(20),
+    conductor_autorizado_vencimiento DATE,
+    
+    -- CONTROL
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    activo BOOLEAN DEFAULT TRUE,
+    
+    INDEX idx_licencia (licencia_conducir),
+    INDEX idx_telefono (telefono)
+);
+
+-- =============================================
+-- CONTRATOS
+-- =============================================
+
+CREATE TABLE contratos (
+    id_contrato INT PRIMARY KEY AUTO_INCREMENT,
+    num_contrato VARCHAR(20) UNIQUE NOT NULL,
+    
+    -- RELACIONES 
+    id_cliente INT NOT NULL,
+    id_vehiculo INT NOT NULL, 
+    id_usuario INT NOT NULL, 
+    id_agencia INT, 
+    
+    -- FECHAS Y TIEMPOS
+    fecha_salida DATETIME NOT NULL,
+    fecha_entrada DATETIME NOT NULL,
+    dias_renta INT NOT NULL,
+    lugar_expedicion VARCHAR(100) DEFAULT 'Cancún, Q.R.',
+    
+    -- INSPECCIÓN VEHÍCULO
+    km_salida INT NOT NULL DEFAULT 0,
+    km_entrada INT DEFAULT NULL,
+    gasolina_salida DECIMAL(2,1) DEFAULT 8.0, -- Nivel en octavos (0-8)
+    gasolina_entrada DECIMAL(2,1) DEFAULT NULL,
+    
+    -- SEGUROS (TRUE = Acepta, FALSE = Declina)
+    seguro_deducible_colision BOOLEAN DEFAULT FALSE,
+    seguro_cdw BOOLEAN DEFAULT FALSE, -- Collision Damage Waiver
+    seguro_cobertura_extendida BOOLEAN DEFAULT FALSE,
+    seguro_accidentes_personales BOOLEAN DEFAULT FALSE,
+    seguro_responsabilidad_civil BOOLEAN DEFAULT FALSE,
+    
+    -- MONTOS FINANCIEROS
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    iva DECIMAL(10,2) NOT NULL DEFAULT 0,
+    total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    id_tipo_cambio INT NOT NULL DEFAULT 1,
+    
+    -- CARGOS ADICIONALES
+    cargo_drop_off DECIMAL(10,2) DEFAULT 0,
+    cargo_gasolina DECIMAL(10,2) DEFAULT 0,
+    cargo_limpieza DECIMAL(10,2) DEFAULT 0,
+    multas_transito DECIMAL(10,2) DEFAULT 0,
+    otros_cargos DECIMAL(10,2) DEFAULT 0,
+    
+    -- CONTROL
+    estado ENUM('activo', 'completado', 'cancelado') DEFAULT 'activo',
+    observaciones TEXT,
+    contrato_abierto_por VARCHAR(100), -- Nombre del empleado
+    contrato_cerrado_por VARCHAR(100),
+    
+    -- AUDITORÍA
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    
+    -- CLAVES FORÁNEAS ✅ CORREGIDAS
+    FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
+    FOREIGN KEY (id_vehiculo) REFERENCES vehiculos(id), -- ✅ Corregido: vehiculos(id)
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
+    FOREIGN KEY (id_tipo_cambio) REFERENCES tipos_cambio(id),
+    FOREIGN KEY (id_agencia) REFERENCES agencias(id_agencia),
+    
+    -- ÍNDICES
+    INDEX idx_num_contrato (num_contrato),
+    INDEX idx_fecha_salida (fecha_salida),
+    INDEX idx_estado (estado)
+);
+-- =============================================
+-- PAGOS
+-- =============================================
+
+CREATE TABLE pagos_contrato (
+    id_pago INT PRIMARY KEY AUTO_INCREMENT,
+    id_contrato INT NOT NULL,
+    
+    -- INFORMACIÓN BÁSICA DEL PAGO
+    concepto VARCHAR(100) NOT NULL, -- 'Anticipo', 'Liquidación', 'Cargo adicional'
+    monto DECIMAL(10,2) NOT NULL,
+    id_tipo_cambio INT NOT NULL,
+    id_metodo_pago INT NOT NULL,
+    
+    -- DETALLES SIMPLES (SIN ENCRIPTACIÓN)
+    referencia VARCHAR(100), -- Número de autorización, folio, etc.
+    observaciones TEXT,
+    
+    -- CONTROL
+    fecha_pago DATETIME NOT NULL,
+    procesado_por INT NOT NULL, -- Usuario que registra el pago
+    
+    -- AUDITORÍA
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (id_contrato) REFERENCES contratos(id_contrato),
+    FOREIGN KEY (id_metodo_pago) REFERENCES metodos_pago(id),
+    FOREIGN KEY (id_tipo_cambio) REFERENCES tipos_cambio(id),
+    FOREIGN KEY (procesado_por) REFERENCES usuarios(id_usuario),
+    
+    INDEX idx_contrato_pago (id_contrato),
+    INDEX idx_fecha_pago (fecha_pago)
+);
+
+-- =============================================
+-- TEMPORADAS Y TARIFAS
+-- =============================================
+
+CREATE TABLE temporadas (
+	id_temporada INT PRIMARY KEY AUTO_INCREMENT,
+	nombre VARCHAR(50) NOT NULL, -- "Temporada Alta", "Temporada Baja", "Fin de Año"
+	fecha_inicio DATE NOT NULL,
+	fecha_fin DATE NOT NULL,
+	multiplicador DECIMAL(3,2) DEFAULT 1.00, -- 1.5 = 150%, 0.8 = 80%
+	descripcion TEXT,
+	activa BOOLEAN DEFAULT TRUE,
+	fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE tarifas (
+	id_tarifa INT PRIMARY KEY AUTO_INCREMENT,
+	id_vehiculo INT NOT NULL,
+	id_temporada INT NOT NULL,
+	precio_dia DECIMAL(10,2) NOT NULL,
+	precio_semana DECIMAL(10,2),
+	precio_mes DECIMAL(10,2),
+	precio_fin_semana DECIMAL(10,2),
+	fecha_vigencia_inicio DATE NOT NULL,
+	fecha_vigencia_fin DATE,
+	activa BOOLEAN DEFAULT TRUE,
+	fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (id_vehiculo) REFERENCES vehiculos(id),
+	FOREIGN KEY (id_temporada) REFERENCES temporadas(id_temporada),
+	UNIQUE KEY unique_vehiculo_temporada_fecha (id_vehiculo, id_temporada, fecha_vigencia_inicio)
+);
+
+-- =============================================
+-- SEGUROS Y DOCUMENTOS
+-- =============================================
+
+CREATE TABLE polizas_seguro (
+	id_poliza INT PRIMARY KEY AUTO_INCREMENT,
+	id_vehiculo INT NOT NULL,
+	numero_poliza VARCHAR(50) NOT NULL,
+	aseguradora VARCHAR(100) NOT NULL,
+	tipo_cobertura VARCHAR(50), -- "Amplia", "Limitada", "RC"
+	fecha_inicio DATE NOT NULL,
+	fecha_vencimiento DATE NOT NULL,
+	monto_cobertura DECIMAL(12,2),
+	prima_anual DECIMAL(10,2),
+	deducible DECIMAL(10,2),
+	beneficiario VARCHAR(100),
+	observaciones TEXT,
+	activa BOOLEAN DEFAULT TRUE,
+	fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (id_vehiculo) REFERENCES vehiculos(id)
+);
+
+CREATE TABLE documentos_vehiculo (
+	id_documento INT PRIMARY KEY AUTO_INCREMENT,
+	id_vehiculo INT NOT NULL,
+	tipo_documento VARCHAR(50) NOT NULL, -- "Tarjeta de Circulación", "Factura", "Verificación", "Tenencia"
+	nombre_archivo VARCHAR(255) NOT NULL,
+	ruta_archivo VARCHAR(500) NOT NULL,
+	fecha_vencimiento DATE, -- Para documentos que vencen
+	descripcion TEXT,
+	fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
+	subido_por INT, -- usuario que subió el documento
+	FOREIGN KEY (id_vehiculo) REFERENCES vehiculos(id),
+	FOREIGN KEY (subido_por) REFERENCES usuarios(id_usuario)
+);
+
+-- =============================================
+-- DATOS INICIALES
+-- =============================================
+
+INSERT INTO roles (nombre) VALUES 
+('administrador'), 
+('empleado'), 
+('supervisor');
+
+INSERT INTO metodos_pago (nombre) VALUES
+('Efectivo'),
+('Tarjeta de Crédito'),
+('Tarjeta de Débito'),
+('Transferencia Bancaria'),
+('Cheque');
+
+INSERT INTO tipos_cambio (codigo_moneda) VALUES
+('MXN'),
+('USD'),
+('EUR'),
+('Pesos'),
+('Dólares'),
+('Euros');
+
+INSERT INTO estatus_vehiculo (estatus) VALUES 
+('disponible'),
+('en_renta'),
+('mantenimiento'),
+('inactivo');
+
+-- =============================================
+-- ÍNDICES BÁSICOS PARA PERFORMANCE
+-- =============================================
+
+CREATE INDEX idx_vehiculos_marca ON vehiculos(marca);
+CREATE INDEX idx_vehiculos_modelo ON vehiculos(modelo);
+CREATE INDEX idx_vehiculos_tipo ON vehiculos(tipo_vehiculo);
+CREATE INDEX idx_vehiculos_estatus ON vehiculos(id_estatus);
+CREATE INDEX idx_vehiculos_agencia ON vehiculos(id_agencia); -- ===== Falla por que hay que agregar id agencia a vehiculos  ===== --
+
+CREATE INDEX idx_contratos_fechas ON contratos(fecha_creacion, fecha_actualizacion);
+CREATE INDEX idx_contratos_cliente ON contratos(id_cliente);
+CREATE INDEX idx_contratos_vehiculo ON contratos(id_vehiculo);
+CREATE INDEX idx_contratos_agencia ON contratos(id_agencia); -- ===== lo mimsmo  pero dejarlo asi ===== --
+
+CREATE INDEX idx_temporadas_fechas ON temporadas(fecha_inicio, fecha_fin);
+CREATE INDEX idx_tarifas_vehiculo ON tarifas(id_vehiculo);
+CREATE INDEX idx_tarifas_temporada ON tarifas(id_temporada);
+CREATE INDEX idx_tarifas_vigencia ON tarifas(fecha_vigencia_inicio, fecha_vigencia_fin);
+
+CREATE INDEX idx_polizas_vehiculo ON polizas_seguro(id_vehiculo);
+CREATE INDEX idx_polizas_vencimiento ON polizas_seguro(fecha_vencimiento);
+
+CREATE INDEX idx_documentos_vehiculo ON documentos_vehiculo(id_vehiculo);
+CREATE INDEX idx_documentos_tipo ON documentos_vehiculo(tipo_documento);
+CREATE INDEX idx_documentos_vencimiento ON documentos_vehiculo(fecha_vencimiento);
+
+-- =============================================
+-- VISTAS ÚTILES
+-- =============================================
+
+CREATE VIEW vista_contratos_activos AS
+SELECT 
+    c.id_contrato,
+    c.num_contrato,
+    c.fecha_salida,
+    c.fecha_entrada,
+    c.dias_renta,
+    c.total,
+    tc.codigo_moneda, 
+    cl.nombre_completo as cliente,
+    cl.telefono,
+    cl.domicilio_hotel,
+    v.marca,
+    v.modelo,
+    v.placas,
+    u.nombre_completo as empleado,
+    c.estado
+FROM contratos c
+JOIN clientes cl ON c.id_cliente = cl.id_cliente
+JOIN vehiculos v ON c.id_vehiculo = v.id 
+JOIN usuarios u ON c.id_usuario = u.id_usuario
+JOIN tipos_cambio tc ON c.id_tipo_cambio = tc.id
+WHERE c.estado = 'activo';
+
+CREATE VIEW vista_pagos_contrato AS
+SELECT 
+    p.id_pago,
+    p.id_contrato,
+    c.num_contrato,
+    p.concepto,
+    p.monto,
+    tc.codigo_moneda, 
+    mp.nombre as metodo_pago,
+    p.referencia,
+    p.fecha_pago,
+    u.nombre_completo as procesado_por
+FROM pagos_contrato p
+JOIN contratos c ON p.id_contrato = c.id_contrato
+JOIN tipos_cambio tc ON p.id_tipo_cambio = tc.id
+JOIN metodos_pago mp ON p.id_metodo_pago = mp.id
+JOIN usuarios u ON p.procesado_por = u.id_usuario;
+
+-- =============================================
+-- CONSULTAS DE PRUEBA
+-- =============================================
+
+SELECT * FROM vehiculos LIMIT 10 OFFSET 0;
+SELECT * FROM estatus_vehiculo;
+SELECT * FROM vehiculos WHERE marca = 'Toyota' AND id_estatus = 3;
+
+
+
